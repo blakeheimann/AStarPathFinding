@@ -2,6 +2,8 @@ import java.util.*;
 
 public class AStarPathFinder {
     private Grid grid;
+    private PriorityQueue<Node> openSet;
+    private Set<Node> closedSet;
 
     public AStarPathFinder(Grid grid) {
         this.grid = grid;
@@ -15,8 +17,8 @@ public class AStarPathFinder {
             return null;
         }
 
-        PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingDouble(Node::getFCost));
-        Set<Node> closedSet = new HashSet<>();
+        openSet = new PriorityQueue<>(Comparator.comparingDouble(Node::getFCost));
+        closedSet = new HashSet<>();
 
         openSet.add(startNode);
 
@@ -49,6 +51,12 @@ public class AStarPathFinder {
         }
 
         return null;
+    }
+
+    public List<Node> getVisitedNodes() {
+        List<Node> visitedNodes = new ArrayList<>(openSet);
+        visitedNodes.addAll(closedSet);
+        return visitedNodes;
     }
 
     private List<Node> reconstructPath(Node endNode) {

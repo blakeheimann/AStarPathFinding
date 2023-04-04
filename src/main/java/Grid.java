@@ -59,4 +59,15 @@ public class Grid {
     public int getHeight() {
         return height;
     }
+
+    public void clear() {
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                nodes[x][y].setObstacle(false);
+                nodes[x][y].setParent(null);
+                nodes[x][y].setGCost(0);
+                nodes[x][y].setHCost(0);
+            }
+        }
+    }
 }
