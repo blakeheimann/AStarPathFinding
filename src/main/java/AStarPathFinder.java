@@ -1,57 +1,7 @@
 import java.util.*;
 
 public class AStarPathFinder {
-    private Grid grid;
-    private PriorityQueue<Node> openSet;
-    private Set<Node> closedSet;
-
-    public AStarPathFinder(Grid grid) {
-        this.grid = grid;
-    }
-
-    public List<Node> findPath(Node startNode, Node endNode) {
-
-        if (startNode == null || endNode == null || startNode.isObstacle() || endNode.isObstacle()) {
-            return null;
-        }
-
-        openSet = new PriorityQueue<>(Comparator.comparingDouble(Node::getFCost));
-        closedSet = new HashSet<>();
-
-        openSet.add(startNode);
-
-        while (!openSet.isEmpty()) {
-            Node currentNode = openSet.poll();
-
-            if (currentNode.equals(endNode)) {
-                return reconstructPath(endNode);
-            }
-
-            closedSet.add(currentNode);
-
-            for (Node neighbor : grid.getNeighbors(currentNode)) {
-                if (closedSet.contains(neighbor)) {
-                    continue;
-                }
-
-                double tentativeGCost = currentNode.getGCost() + distance(currentNode, neighbor);
-
-                if (tentativeGCost < neighbor.getGCost() || !openSet.contains(neighbor)) {
-                    neighbor.setParent(currentNode);
-                    neighbor.setGCost(tentativeGCost);
-                    neighbor.setHCost(distance(neighbor, endNode));
-
-                    if (!openSet.contains(neighbor)) {
-                        openSet.add(neighbor);
-                    }
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private List<Node> reconstructPath(Node endNode) {
+    public static List<Node> reconstructPath(Node endNode) {
         List<Node> path = new ArrayList<>();
         Node currentNode = endNode;
 
@@ -64,7 +14,7 @@ public class AStarPathFinder {
         return path;
     }
 
-    private double distance(Node a, Node b) {
+    public static double distance(Node a, Node b) {
         return Math.sqrt(Math.pow(a.getX() - b.getX(), 2) + Math.pow(a.getY() - b.getY(), 2));
     }
 }

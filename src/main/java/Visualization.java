@@ -12,8 +12,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class Visualization extends Application {
     private static final int CELL_SIZE = 20;
@@ -39,7 +38,6 @@ public class Visualization extends Application {
     @Override
     public void start(Stage primaryStage) {
         grid = new Grid(GRID_WIDTH, GRID_HEIGHT);
-        pathFinder = new AStarPathFinder(grid);
 
         root = new Pane();
         Scene scene = new Scene(root, GRID_WIDTH * CELL_SIZE, GRID_HEIGHT * CELL_SIZE + 120);
@@ -92,7 +90,13 @@ public class Visualization extends Application {
         Button startAlgorithmButton = new Button("Start Algorithm");
         startAlgorithmButton.setLayoutX(GRID_WIDTH * CELL_SIZE / 2 + 20);
         startAlgorithmButton.setLayoutY(GRID_HEIGHT * CELL_SIZE + 10);
-        startAlgorithmButton.setOnAction(e -> findAndDrawPath());
+        startAlgorithmButton.setOnAction(e -> {
+            try {
+                findAndDrawPath();
+            } catch (InterruptedException ex) {
+                throw new RuntimeException(ex);
+            }
+        });
 
         Label sliderLabel = new Label("Number of obstacles:");
         Slider obstaclesSlider = new Slider(5, GRID_WIDTH * GRID_HEIGHT * 0.05, GRID_WIDTH * GRID_HEIGHT * 0.005);
@@ -143,6 +147,51 @@ public class Visualization extends Application {
         primaryStage.setTitle("A* Pathfinding Visualization");
         primaryStage.setScene(scene);
         primaryStage.show();
+    }
+
+    public List<Node> findPath(Node startNode, Node endNode) throws InterruptedException {
+
+        if (startNode == null || endNode == null || startNode.isObstacle() || endNode.isObstacle()) {
+            return null;
+        }
+
+        PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingDouble(Node::getFCost));
+        Set<Node> closedSet = new HashSet<>();
+
+        openSet.add(startNode);
+
+        while (!openSet.isEmpty()) {
+            Node currentNode = openSet.poll();
+
+            if (currentNode.equals(endNode)) {
+                return AStarPathFinder.reconstructPath(endNode);
+            }
+
+            closedSet.add(currentNode);
+
+            for (Node neighbor : grid.getNeighbors(currentNode)) {
+                if (closedSet.contains(neighbor)) {
+                    continue;
+                }
+
+                double tentativeGCost = currentNode.getGCost() + AStarPathFinder.distance(currentNode, neighbor);
+
+                if (tentativeGCost < neighbor.getGCost() || !openSet.contains(neighbor)) {
+                    neighbor.setParent(currentNode);
+                    neighbor.setGCost(tentativeGCost);
+                    neighbor.setHCost(AStarPathFinder.distance(neighbor, endNode));
+
+                    if (!openSet.contains(neighbor)) {
+                        openSet.add(neighbor);
+                    }
+                }
+            }
+            // update Visualization
+            updateSets(openSet,closedSet);
+
+        }
+
+        return null;
     }
 
     private void setStartNode(int x, int y) {
@@ -201,10 +250,10 @@ public class Visualization extends Application {
         }
     }
 
-    private void findAndDrawPath() {
+    private void findAndDrawPath() throws InterruptedException {
         clearPath();
         if (startNode != null && endNode != null) {
-            List<Node> path = pathFinder.findPath(startNode, endNode);
+            List<Node> path = findPath(startNode, endNode);
             if (path != null) {
                 for (Node node : path) {
                     if (node != startNode && node != endNode) {
@@ -252,4 +301,20 @@ public class Visualization extends Application {
         }
     }
 
+    public void updateSets(PriorityQueue<Node> openSet, Set<Node> closedSet) {
+        if (openSet != null) {
+            for (Node node : openSet) {
+                if (node != startNode && node != endNode) {
+                    drawCell(node.getX(), node.getY(), Color.LIGHTBLUE);
+                }
+            }
+        }
+        if (closedSet != null) {
+            for (Node node : openSet) {
+                if (node != startNode && node != endNode) {
+                    drawCell(node.getX(), node.getY(), Color.LIGHTGREEN);
+                }
+            }
+        }
+    }
 }
