@@ -1,21 +1,16 @@
 import javafx.application.Application;
-import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.input.MouseButton;
-import javafx.scene.layout.Pane;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
-import javafx.stage.Stage;
-import javafx.scene.control.Label;
-import javafx.scene.control.Slider;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
 import javafx.scene.layout.HBox;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
+import javafx.stage.Stage;
 
 import java.util.List;
 import java.util.Random;
@@ -24,8 +19,6 @@ public class Visualization extends Application {
     private static final int CELL_SIZE = 20;
     private static final int GRID_WIDTH = 30;
     private static final int GRID_HEIGHT = 30;
-    private static final int BUTTON_AREA_HEIGHT = 40;
-
     private Grid grid;
     private AStarPathFinder pathFinder;
     private Pane root;
@@ -33,7 +26,7 @@ public class Visualization extends Application {
     private Node endNode;
 
     private enum Mode {
-        PLACE_START, PLACE_END, PLACE_OBSTACLE, DRAW_OBSTACLES
+        PLACE_START, PLACE_END, REMOVE_OBSTACLE, SET_OBSTACLE
     }
 
 
@@ -61,18 +54,33 @@ public class Visualization extends Application {
 
             // Ensure the click is within the grid bounds
             if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
-                if (event.getButton() == MouseButton.PRIMARY) {
-                    handlePrimaryClick(x, y);
+                Node clickedNode = grid.getNode(x, y);
+                if (clickedNode == startNode) {
+                    currentMode = Mode.PLACE_START;
+                } else if (clickedNode == endNode) {
+                    currentMode = Mode.PLACE_END;
+                } else if (clickedNode.isObstacle()) {
+                    currentMode = Mode.REMOVE_OBSTACLE;
+                    removeObstacle(x, y);
+                } else {
+                    currentMode = Mode.SET_OBSTACLE;
+                    setObstacle(x, y);
                 }
             }
         });
 
         scene.setOnMouseDragged(event -> {
-            if (currentMode == Mode.DRAW_OBSTACLES && event.getButton() == MouseButton.PRIMARY) {
-                int x = (int) (event.getX() / CELL_SIZE);
-                int y = (int) (event.getY() / CELL_SIZE);
+            int x = (int) (event.getX() / CELL_SIZE);
+            int y = (int) (event.getY() / CELL_SIZE);
 
-                if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+            if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+                if (currentMode == Mode.PLACE_START) {
+                    setStartNode(x, y);
+                } else if (currentMode == Mode.PLACE_END) {
+                    setEndNode(x, y);
+                } else if (currentMode == Mode.REMOVE_OBSTACLE) {
+                    removeObstacle(x, y);
+                } else {
                     setObstacle(x, y);
                 }
             }
@@ -80,20 +88,6 @@ public class Visualization extends Application {
 
 
         // Add UI buttons
-        Button placeStartButton = new Button("Place Start");
-        placeStartButton.setLayoutX(GRID_WIDTH * CELL_SIZE / 2 - 260);
-        placeStartButton.setLayoutY(GRID_HEIGHT * CELL_SIZE + 10);
-        placeStartButton.setOnAction(e -> currentMode = Mode.PLACE_START);
-
-        Button placeEndButton = new Button("Place End");
-        placeEndButton.setLayoutX(GRID_WIDTH * CELL_SIZE / 2 - 175);
-        placeEndButton.setLayoutY(GRID_HEIGHT * CELL_SIZE + 10);
-        placeEndButton.setOnAction(e -> currentMode = Mode.PLACE_END);
-
-        Button placeObstacleButton = new Button("Place Obstacle");
-        placeObstacleButton.setLayoutX(GRID_WIDTH * CELL_SIZE / 2 - 80);
-        placeObstacleButton.setLayoutY(GRID_HEIGHT * CELL_SIZE + 10);
-        placeObstacleButton.setOnAction(e -> currentMode = Mode.PLACE_OBSTACLE);
 
         Button startAlgorithmButton = new Button("Start Algorithm");
         startAlgorithmButton.setLayoutX(GRID_WIDTH * CELL_SIZE / 2 + 20);
@@ -111,23 +105,15 @@ public class Visualization extends Application {
         addRandomObstaclesButton.setOnAction(e -> addRandomObstacles((int) obstaclesSlider.getValue()));
 
         Button clearButton = new Button("Clear");
-        clearButton.setOnAction(e -> {
-            grid.clear();
-            startNode = null;
-            endNode = null;
-            drawGrid();
-        });
-
-        Button drawObstaclesButton = new Button("Draw Obstacles");
-        drawObstaclesButton.setOnAction(e -> currentMode = Mode.DRAW_OBSTACLES);
+        clearButton.setOnAction(e -> clearGrid());
 
         HBox topButtonsContainer = new HBox(10);
         topButtonsContainer.setAlignment(Pos.CENTER);
-        topButtonsContainer.getChildren().addAll(placeStartButton, placeEndButton, placeObstacleButton, addRandomObstaclesButton);
+        topButtonsContainer.getChildren().addAll(addRandomObstaclesButton);
 
         HBox bottomButtonsContainer = new HBox(10);
         bottomButtonsContainer.setAlignment(Pos.CENTER);
-        bottomButtonsContainer.getChildren().addAll(clearButton, startAlgorithmButton, drawObstaclesButton);
+        bottomButtonsContainer.getChildren().addAll(clearButton, startAlgorithmButton);
 
         VBox sliderContainer = new VBox(5);
         sliderContainer.setAlignment(Pos.CENTER);
@@ -147,21 +133,16 @@ public class Visualization extends Application {
 
         root.getChildren().add(buttonsContainer);
 
-//        root.getChildren().addAll(placeStartButton, placeEndButton, placeObstacleButton, startAlgorithmButton);
+        // Set the start and end nodes based on the given conditions
+        int startY = GRID_HEIGHT / 2;
+        int startX = GRID_WIDTH / 3;
+        int endX = (2 * GRID_WIDTH) / 3;
+        setStartNode(startX, startY);
+        setEndNode(endX, startY);
 
         primaryStage.setTitle("A* Pathfinding Visualization");
         primaryStage.setScene(scene);
         primaryStage.show();
-    }
-
-    private void handlePrimaryClick(int x, int y) {
-        if (currentMode == Mode.PLACE_START) {
-            setStartNode(x, y);
-        } else if (currentMode == Mode.PLACE_END) {
-            setEndNode(x, y);
-        } else if (currentMode == Mode.PLACE_OBSTACLE) {
-            toggleObstacle(x, y);
-        }
     }
 
     private void setStartNode(int x, int y) {
@@ -198,14 +179,6 @@ public class Visualization extends Application {
         root.getChildren().add(rect);
     }
 
-    private void toggleObstacle(int x, int y) {
-        Node node = grid.getNode(x, y);
-        if (node == startNode || node == endNode) return;
-
-        grid.setObstacle(x, y, !node.isObstacle());
-        drawCell(x, y, node.isObstacle() ? Color.BLACK : Color.WHITE);
-    }
-
     private void clearPath() {
         for (int x = 0; x < GRID_WIDTH; x++) {
             for (int y = 0; y < GRID_HEIGHT; y++) {
@@ -217,11 +190,21 @@ public class Visualization extends Application {
         }
     }
 
+    private void clearGrid() {
+        grid.clear();
+        drawGrid();
+        if (startNode != null) {
+            setStartNode(startNode.getX(), startNode.getY());
+        }
+        if (endNode != null) {
+            setEndNode(endNode.getX(), endNode.getY());
+        }
+    }
+
     private void findAndDrawPath() {
         clearPath();
         if (startNode != null && endNode != null) {
-            java.util.List<Node> path = pathFinder.findPath(startNode.getX(), startNode.getY(), endNode.getX(), endNode.getY());
-            colorVisitedNodes(pathFinder.getVisitedNodes());
+            List<Node> path = pathFinder.findPath(startNode.getX(), startNode.getY(), endNode.getX(), endNode.getY());
             if (path != null) {
                 for (Node node : path) {
                     if (node != startNode && node != endNode) {
@@ -230,40 +213,6 @@ public class Visualization extends Application {
                 }
             }
         }
-    }
-
-    private void colorVisitedNodes(List<Node> visitedNodes) {
-        if (visitedNodes.isEmpty()) {
-            return;
-        }
-
-        double minFCost = Double.MAX_VALUE;
-        double maxFCost = Double.MIN_VALUE;
-
-        for (Node node : visitedNodes) {
-            double fCost = node.getFCost();
-            minFCost = Math.min(minFCost, fCost);
-            maxFCost = Math.max(maxFCost, fCost);
-        }
-
-        for (Node node : visitedNodes) {
-            if (node != startNode && node != endNode) {
-                double normalizedFCost = (node.getFCost() - minFCost) / (maxFCost - minFCost);
-                Color gradientColor = getColorFromGradient(normalizedFCost);
-                drawCell(node.getX(), node.getY(), gradientColor);
-            }
-        }
-    }
-
-    private Color getColorFromGradient(double ratio) {
-        Color startColor = Color.YELLOW;
-        Color endColor = Color.PURPLE;
-
-        double red = startColor.getRed() + (endColor.getRed() - startColor.getRed()) * ratio;
-        double green = startColor.getGreen() + (endColor.getGreen() - startColor.getGreen()) * ratio;
-        double blue = startColor.getBlue() + (endColor.getBlue() - startColor.getBlue()) * ratio;
-
-        return new Color(red, green, blue, 1.0);
     }
 
     private void addRandomObstacles(int numObstacles) {
@@ -290,6 +239,16 @@ public class Visualization extends Application {
         if (!node.isObstacle()) {
             grid.setObstacle(x, y, true);
             drawCell(x, y, Color.BLACK);
+        }
+    }
+
+    private void removeObstacle(int x, int y) {
+        Node node = grid.getNode(x, y);
+        if (node == startNode || node == endNode) return;
+
+        if (node.isObstacle()) {
+            grid.setObstacle(x, y, false);
+            drawCell(x, y, Color.WHITE);
         }
     }
 

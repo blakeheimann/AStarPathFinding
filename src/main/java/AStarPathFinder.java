@@ -53,12 +53,6 @@ public class AStarPathFinder {
         return null;
     }
 
-    public List<Node> getVisitedNodes() {
-        List<Node> visitedNodes = new ArrayList<>(openSet);
-        visitedNodes.addAll(closedSet);
-        return visitedNodes;
-    }
-
     private List<Node> reconstructPath(Node endNode) {
         List<Node> path = new ArrayList<>();
         Node currentNode = endNode;
