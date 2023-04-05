@@ -9,9 +9,7 @@ public class AStarPathFinder {
         this.grid = grid;
     }
 
-    public List<Node> findPath(int startX, int startY, int endX, int endY) {
-        Node startNode = grid.getNode(startX, startY);
-        Node endNode = grid.getNode(endX, endY);
+    public List<Node> findPath(Node startNode, Node endNode) {
 
         if (startNode == null || endNode == null || startNode.isObstacle() || endNode.isObstacle()) {
             return null;

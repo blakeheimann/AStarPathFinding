@@ -204,7 +204,7 @@ public class Visualization extends Application {
     private void findAndDrawPath() {
         clearPath();
         if (startNode != null && endNode != null) {
-            List<Node> path = pathFinder.findPath(startNode.getX(), startNode.getY(), endNode.getX(), endNode.getY());
+            List<Node> path = pathFinder.findPath(startNode, endNode);
             if (path != null) {
                 for (Node node : path) {
                     if (node != startNode && node != endNode) {
