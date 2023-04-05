@@ -6,14 +6,24 @@ import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
+import javafx.scene.control.Label;
+import javafx.scene.control.Slider;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.Label;
+import javafx.scene.control.Slider;
+import javafx.scene.layout.HBox;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.layout.VBox;
 
 import java.util.List;
 import java.util.Random;
 
 public class Visualization extends Application {
     private static final int CELL_SIZE = 20;
-    private static final int GRID_WIDTH = 60;
-    private static final int GRID_HEIGHT = 60;
+    private static final int GRID_WIDTH = 30;
+    private static final int GRID_HEIGHT = 30;
     private static final int BUTTON_AREA_HEIGHT = 40;
 
     private Grid grid;
@@ -21,6 +31,13 @@ public class Visualization extends Application {
     private Pane root;
     private Node startNode;
     private Node endNode;
+
+    private enum Mode {
+        PLACE_START, PLACE_END, PLACE_OBSTACLE, DRAW_OBSTACLES
+    }
+
+
+    private Mode currentMode = Mode.PLACE_START;
 
     public static void main(String[] args) {
         launch(args);
@@ -32,7 +49,7 @@ public class Visualization extends Application {
         pathFinder = new AStarPathFinder(grid);
 
         root = new Pane();
-        Scene scene = new Scene(root, GRID_WIDTH * CELL_SIZE, GRID_HEIGHT * CELL_SIZE + BUTTON_AREA_HEIGHT);
+        Scene scene = new Scene(root, GRID_WIDTH * CELL_SIZE, GRID_HEIGHT * CELL_SIZE + 120);
 
         // Initialize the grid
         drawGrid();
@@ -42,23 +59,58 @@ public class Visualization extends Application {
             int x = (int) (event.getX() / CELL_SIZE);
             int y = (int) (event.getY() / CELL_SIZE);
 
-            if (event.getButton() == MouseButton.PRIMARY) {
-                setStartOrEndNode(x, y);
-            } else if (event.getButton() == MouseButton.SECONDARY) {
-                toggleObstacle(x, y);
+            // Ensure the click is within the grid bounds
+            if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+                if (event.getButton() == MouseButton.PRIMARY) {
+                    handlePrimaryClick(x, y);
+                }
             }
         });
 
-        scene.setOnMouseClicked(event -> {
-            if (event.getButton() == MouseButton.MIDDLE) {
-                findAndDrawPath();
+        scene.setOnMouseDragged(event -> {
+            if (currentMode == Mode.DRAW_OBSTACLES && event.getButton() == MouseButton.PRIMARY) {
+                int x = (int) (event.getX() / CELL_SIZE);
+                int y = (int) (event.getY() / CELL_SIZE);
+
+                if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+                    setObstacle(x, y);
+                }
             }
         });
 
-        // Add a clear button
+
+        // Add UI buttons
+        Button placeStartButton = new Button("Place Start");
+        placeStartButton.setLayoutX(GRID_WIDTH * CELL_SIZE / 2 - 260);
+        placeStartButton.setLayoutY(GRID_HEIGHT * CELL_SIZE + 10);
+        placeStartButton.setOnAction(e -> currentMode = Mode.PLACE_START);
+
+        Button placeEndButton = new Button("Place End");
+        placeEndButton.setLayoutX(GRID_WIDTH * CELL_SIZE / 2 - 175);
+        placeEndButton.setLayoutY(GRID_HEIGHT * CELL_SIZE + 10);
+        placeEndButton.setOnAction(e -> currentMode = Mode.PLACE_END);
+
+        Button placeObstacleButton = new Button("Place Obstacle");
+        placeObstacleButton.setLayoutX(GRID_WIDTH * CELL_SIZE / 2 - 80);
+        placeObstacleButton.setLayoutY(GRID_HEIGHT * CELL_SIZE + 10);
+        placeObstacleButton.setOnAction(e -> currentMode = Mode.PLACE_OBSTACLE);
+
+        Button startAlgorithmButton = new Button("Start Algorithm");
+        startAlgorithmButton.setLayoutX(GRID_WIDTH * CELL_SIZE / 2 + 20);
+        startAlgorithmButton.setLayoutY(GRID_HEIGHT * CELL_SIZE + 10);
+        startAlgorithmButton.setOnAction(e -> findAndDrawPath());
+
+        Label sliderLabel = new Label("Number of obstacles:");
+        Slider obstaclesSlider = new Slider(5, GRID_WIDTH * GRID_HEIGHT * 0.05, GRID_WIDTH * GRID_HEIGHT * 0.005);
+        obstaclesSlider.setShowTickLabels(true);
+        obstaclesSlider.setShowTickMarks(true);
+        obstaclesSlider.setMajorTickUnit(50);
+        obstaclesSlider.setBlockIncrement(1);
+
+        Button addRandomObstaclesButton = new Button("Add Random Obstacles");
+        addRandomObstaclesButton.setOnAction(e -> addRandomObstacles((int) obstaclesSlider.getValue()));
+
         Button clearButton = new Button("Clear");
-        clearButton.setLayoutX(GRID_WIDTH * CELL_SIZE - 50);
-        clearButton.setLayoutY(GRID_HEIGHT * CELL_SIZE);
         clearButton.setOnAction(e -> {
             grid.clear();
             startNode = null;
@@ -66,20 +118,69 @@ public class Visualization extends Application {
             drawGrid();
         });
 
-        Button randomObstaclesButton = new Button("Add Random Obstacles");
-        randomObstaclesButton.setLayoutX(GRID_WIDTH * CELL_SIZE / 2 - 100);
-        randomObstaclesButton.setLayoutY(GRID_HEIGHT * CELL_SIZE + 10);
-        randomObstaclesButton.setOnAction(event -> addRandomObstacles(50)); // Change the number of obstacles to your preference
+        Button drawObstaclesButton = new Button("Draw Obstacles");
+        drawObstaclesButton.setOnAction(e -> currentMode = Mode.DRAW_OBSTACLES);
 
-        root.getChildren().add(clearButton);
-        root.getChildren().add(randomObstaclesButton);
+        HBox topButtonsContainer = new HBox(10);
+        topButtonsContainer.setAlignment(Pos.CENTER);
+        topButtonsContainer.getChildren().addAll(placeStartButton, placeEndButton, placeObstacleButton, addRandomObstaclesButton);
 
+        HBox bottomButtonsContainer = new HBox(10);
+        bottomButtonsContainer.setAlignment(Pos.CENTER);
+        bottomButtonsContainer.getChildren().addAll(clearButton, startAlgorithmButton, drawObstaclesButton);
+
+        VBox sliderContainer = new VBox(5);
+        sliderContainer.setAlignment(Pos.CENTER);
+        sliderContainer.getChildren().addAll(sliderLabel, obstaclesSlider);
+
+        HBox bottomRowContainer = new HBox(10);
+        bottomRowContainer.setAlignment(Pos.CENTER);
+        bottomRowContainer.getChildren().addAll(bottomButtonsContainer, sliderContainer);
+
+        VBox buttonsContainer = new VBox(10);
+        buttonsContainer.setPadding(new Insets(10, 0, 0, 0));
+        buttonsContainer.setAlignment(Pos.CENTER);
+        buttonsContainer.setLayoutX(0);
+        buttonsContainer.setLayoutY(GRID_HEIGHT * CELL_SIZE);
+        buttonsContainer.setPrefWidth(GRID_WIDTH * CELL_SIZE);
+        buttonsContainer.getChildren().addAll(topButtonsContainer, bottomRowContainer);
+
+        root.getChildren().add(buttonsContainer);
+
+//        root.getChildren().addAll(placeStartButton, placeEndButton, placeObstacleButton, startAlgorithmButton);
 
         primaryStage.setTitle("A* Pathfinding Visualization");
         primaryStage.setScene(scene);
         primaryStage.show();
     }
 
+    private void handlePrimaryClick(int x, int y) {
+        if (currentMode == Mode.PLACE_START) {
+            setStartNode(x, y);
+        } else if (currentMode == Mode.PLACE_END) {
+            setEndNode(x, y);
+        } else if (currentMode == Mode.PLACE_OBSTACLE) {
+            toggleObstacle(x, y);
+        }
+    }
+
+    private void setStartNode(int x, int y) {
+        if (startNode != null) {
+            // Clear the previous start node
+            drawCell(startNode.getX(), startNode.getY(), Color.WHITE);
+        }
+        startNode = grid.getNode(x, y);
+        drawCell(x, y, Color.GREEN);
+    }
+
+    private void setEndNode(int x, int y) {
+        if (endNode != null) {
+            // Clear the previous end node
+            drawCell(endNode.getX(), endNode.getY(), Color.WHITE);
+        }
+        endNode = grid.getNode(x, y);
+        drawCell(x, y, Color.RED);
+    }
 
     private void drawGrid() {
         for (int x = 0; x < GRID_WIDTH; x++) {
@@ -95,16 +196,6 @@ public class Visualization extends Application {
         rect.setFill(color);
         rect.setStroke(Color.GRAY);
         root.getChildren().add(rect);
-    }
-
-    private void setStartOrEndNode(int x, int y) {
-        if (startNode == null) {
-            startNode = grid.getNode(x, y);
-            drawCell(x, y, Color.GREEN);
-        } else if (endNode == null) {
-            endNode = grid.getNode(x, y);
-            drawCell(x, y, Color.RED);
-        }
     }
 
     private void toggleObstacle(int x, int y) {
@@ -187,6 +278,16 @@ public class Visualization extends Application {
                 node = grid.getNode(x, y);
             } while (node.isObstacle() || node == startNode || node == endNode);
 
+            grid.setObstacle(x, y, true);
+            drawCell(x, y, Color.BLACK);
+        }
+    }
+
+    private void setObstacle(int x, int y) {
+        Node node = grid.getNode(x, y);
+        if (node == startNode || node == endNode) return;
+
+        if (!node.isObstacle()) {
             grid.setObstacle(x, y, true);
             drawCell(x, y, Color.BLACK);
         }
