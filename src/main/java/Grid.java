@@ -4,7 +4,7 @@ import java.util.List;
 public class Grid {
     private int width;
     private int height;
-    private Node[][] nodes;
+    public Node[][] nodes;
 
     public Grid(int width, int height) {
         this.width = width;
@@ -23,13 +23,6 @@ public class Grid {
             return nodes[x][y];
         }
         return null;
-    }
-
-    public void setObstacle(int x, int y, boolean isObstacle) {
-        Node node = getNode(x, y);
-        if (node != null) {
-            node.setObstacle(isObstacle);
-        }
     }
 
     public List<Node> getNeighbors(Node node) {

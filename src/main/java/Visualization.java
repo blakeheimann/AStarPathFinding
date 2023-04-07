@@ -59,8 +59,8 @@ public class Visualization extends Application {
         int startY = GRID_HEIGHT / 2;
         int startX = GRID_WIDTH / 3;
         int endX = (2 * GRID_WIDTH) / 3;
-        setStartNode(startX, startY);
-        setEndNode(endX, startY);
+        setStartNode(grid.getNode(startX,startY));
+        setEndNode(grid.getNode(endX, startY));
 
         primaryStage.setTitle("A* Pathfinding Visualization");
         primaryStage.setScene(scene);
@@ -86,19 +86,19 @@ public class Visualization extends Application {
         return rect;
     }
 
-    private void drawCell(int x, int y, Color color) {
-        Rectangle rect = cellRectangles[x][y];
+    private void drawCell(Node node, Color color) {
+        Rectangle rect = cellRectangles[node.getX()][node.getY()];
         if (rect != null) {
             rect.setFill(color);
         }
     }
-
+// Definitely can be improved instead of searching whole graph just go through the open and closed set?
     private void clearPath() {
         for (int x = 0; x < GRID_WIDTH; x++) {
             for (int y = 0; y < GRID_HEIGHT; y++) {
                 Node node = grid.getNode(x, y);
                 if (!node.isObstacle() && node != startNode && node != endNode) {
-                    drawCell(x, y, Color.WHITE);
+                    drawCell(node, Color.WHITE);
                 }
             }
         }
@@ -108,10 +108,10 @@ public class Visualization extends Application {
         grid.clear();
         drawGrid();
         if (startNode != null) {
-            setStartNode(startNode.getX(), startNode.getY());
+            setStartNode(startNode);
         }
         if (endNode != null) {
-            setEndNode(endNode.getX(), endNode.getY());
+            setEndNode(endNode);
         }
     }
 
@@ -161,7 +161,7 @@ public class Visualization extends Application {
             if (path != null) {
                 for (Node node : path) {
                     if (node != startNode && node != endNode) {
-                        drawCell(node.getX(), node.getY(), Color.BLUE);
+                        drawCell(node, Color.BLUE);
                     }
                 }
             }
@@ -200,67 +200,65 @@ public class Visualization extends Application {
                 node = grid.getNode(x, y);
             } while (node.isObstacle() || node == startNode || node == endNode);
 
-            grid.setObstacle(x, y, true);
-            drawCell(x, y, Color.BLACK);
+            node.setObstacle(true);
+            drawCell(node, Color.BLACK);
         }
     }
 
-    private void setObstacle(int x, int y) {
-        Node node = grid.getNode(x, y);
+    private void setObstacle(Node node) {
         if (node == startNode || node == endNode) return;
 
         if (!node.isObstacle()) {
-            grid.setObstacle(x, y, true);
-            drawCell(x, y, Color.BLACK);
+            node.setObstacle(true);
+            drawCell(node, Color.BLACK);
         }
     }
 
-    private void removeObstacle(int x, int y) {
-        Node node = grid.getNode(x, y);
+    private void removeObstacle(Node node) {
         if (node == startNode || node == endNode) return;
 
         if (node.isObstacle()) {
-            grid.setObstacle(x, y, false);
-            drawCell(x, y, Color.WHITE);
+            node.setObstacle(false);
+            drawCell(node, Color.WHITE);
         }
     }
 
-    private void setStartNode(int x, int y) {
-        if(grid.getNode(x,y).isObstacle()){
+    private void setStartNode(Node node) {
+        if(node.isObstacle()){
             return;
         }
         if (startNode != null) {
             // Clear the previous start node
-            drawCell(startNode.getX(), startNode.getY(), Color.WHITE);
+            drawCell(startNode, Color.WHITE);
         }
-        startNode = grid.getNode(x, y);
-        drawCell(x, y, Color.GREEN);
+        startNode = node;
+        drawCell(node, Color.GREEN);
     }
 
-    private void setEndNode(int x, int y) {
-        if(grid.getNode(x,y).isObstacle()){
+    private void setEndNode(Node node) {
+        if(node.isObstacle()){
             return;
         }
         if (endNode != null) {
             // Clear the previous end node
-            drawCell(endNode.getX(), endNode.getY(), Color.WHITE);
+            drawCell(endNode, Color.WHITE);
         }
-        endNode = grid.getNode(x, y);
-        drawCell(x, y, Color.RED);
+        endNode = node;
+        drawCell(node, Color.RED);
     }
 
     public void updateSets(PriorityQueue<Node> openSet, Set<Node> closedSet) {
         if (openSet != null) {
             for (Node node : openSet) {
                 if (node != startNode && node != endNode) {
-                    drawCell(node.getX(), node.getY(), Color.LIGHTGREEN);
+                    drawCell(node, Color.LIGHTGREEN);
                 }
             }
         }
         if (closedSet != null) {
             for (Node node : closedSet) {
                 if (node != startNode && node != endNode) {
-                    drawCell(node.getX(), node.getY(), Color.LIGHTBLUE);
+                    drawCell(node, Color.LIGHTBLUE);
                 }
             }
         }
@@ -287,10 +285,10 @@ public class Visualization extends Application {
                 currentMode = Mode.PLACE_END;
             } else if (clickedNode.isObstacle()) {
                 currentMode = Mode.REMOVE_OBSTACLE;
-                removeObstacle(x, y);
+                removeObstacle(clickedNode);
             } else {
                 currentMode = Mode.SET_OBSTACLE;
-                setObstacle(x, y);
+                setObstacle(clickedNode);
             }
         }
     }
@@ -301,14 +299,15 @@ public class Visualization extends Application {
         int y = (int) (event.getY() / CELL_SIZE);
 
         if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+            Node draggedNode = grid.getNode(x, y);
             if (currentMode == Mode.PLACE_START) {
-                setStartNode(x, y);
+                setStartNode(draggedNode);
             } else if (currentMode == Mode.PLACE_END) {
-                setEndNode(x, y);
+                setEndNode(draggedNode);
             } else if (currentMode == Mode.REMOVE_OBSTACLE) {
-                removeObstacle(x, y);
+                removeObstacle(draggedNode);
             } else {
-                setObstacle(x, y);
+                setObstacle(draggedNode);
             }
         }
     }
