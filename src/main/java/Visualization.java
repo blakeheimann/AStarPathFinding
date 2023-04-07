@@ -6,6 +6,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
@@ -48,91 +49,11 @@ public class Visualization extends Application {
         drawGrid();
 
         // Add mouse event listeners
-        scene.setOnMousePressed(event -> {
-            int x = (int) (event.getX() / CELL_SIZE);
-            int y = (int) (event.getY() / CELL_SIZE);
-
-            // Ensure the click is within the grid bounds
-            if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
-                Node clickedNode = grid.getNode(x, y);
-                if (clickedNode == startNode) {
-                    currentMode = Mode.PLACE_START;
-                } else if (clickedNode == endNode) {
-                    currentMode = Mode.PLACE_END;
-                } else if (clickedNode.isObstacle()) {
-                    currentMode = Mode.REMOVE_OBSTACLE;
-                    removeObstacle(x, y);
-                } else {
-                    currentMode = Mode.SET_OBSTACLE;
-                    setObstacle(x, y);
-                }
-            }
-        });
-
-        scene.setOnMouseDragged(event -> {
-            int x = (int) (event.getX() / CELL_SIZE);
-            int y = (int) (event.getY() / CELL_SIZE);
-
-            if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
-                if (currentMode == Mode.PLACE_START) {
-                    setStartNode(x, y);
-                } else if (currentMode == Mode.PLACE_END) {
-                    setEndNode(x, y);
-                } else if (currentMode == Mode.REMOVE_OBSTACLE) {
-                    removeObstacle(x, y);
-                } else {
-                    setObstacle(x, y);
-                }
-            }
-        });
+        scene.setOnMousePressed(event -> handleMouseClick(event));
+        scene.setOnMouseDragged(event -> handleMouseDrag(event));
 
         // Add UI buttons
-
-        Button startAlgorithmButton = new Button("Start Algorithm");
-        startAlgorithmButton.setLayoutX(GRID_WIDTH * CELL_SIZE / 2 + 20);
-        startAlgorithmButton.setLayoutY(GRID_HEIGHT * CELL_SIZE + 10);
-        startAlgorithmButton.setOnAction(e -> {
-            findAndDrawPath();
-        });
-
-        Label sliderLabel = new Label("Number of obstacles:");
-        Slider obstaclesSlider = new Slider(5, GRID_WIDTH * GRID_HEIGHT * 0.05, GRID_WIDTH * GRID_HEIGHT * 0.005);
-        obstaclesSlider.setShowTickLabels(true);
-        obstaclesSlider.setShowTickMarks(true);
-        obstaclesSlider.setMajorTickUnit(50);
-        obstaclesSlider.setBlockIncrement(1);
-
-        Button addRandomObstaclesButton = new Button("Add Random Obstacles");
-        addRandomObstaclesButton.setOnAction(e -> addRandomObstacles((int) obstaclesSlider.getValue()));
-
-        Button clearButton = new Button("Clear");
-        clearButton.setOnAction(e -> clearGrid());
-
-        HBox topButtonsContainer = new HBox(10);
-        topButtonsContainer.setAlignment(Pos.CENTER);
-        topButtonsContainer.getChildren().addAll(addRandomObstaclesButton);
-
-        HBox bottomButtonsContainer = new HBox(10);
-        bottomButtonsContainer.setAlignment(Pos.CENTER);
-        bottomButtonsContainer.getChildren().addAll(clearButton, startAlgorithmButton);
-
-        VBox sliderContainer = new VBox(5);
-        sliderContainer.setAlignment(Pos.CENTER);
-        sliderContainer.getChildren().addAll(sliderLabel, obstaclesSlider);
-
-        HBox bottomRowContainer = new HBox(10);
-        bottomRowContainer.setAlignment(Pos.CENTER);
-        bottomRowContainer.getChildren().addAll(bottomButtonsContainer, sliderContainer);
-
-        VBox buttonsContainer = new VBox(10);
-        buttonsContainer.setPadding(new Insets(10, 0, 0, 0));
-        buttonsContainer.setAlignment(Pos.CENTER);
-        buttonsContainer.setLayoutX(0);
-        buttonsContainer.setLayoutY(GRID_HEIGHT * CELL_SIZE);
-        buttonsContainer.setPrefWidth(GRID_WIDTH * CELL_SIZE);
-        buttonsContainer.getChildren().addAll(topButtonsContainer, bottomRowContainer);
-
-        root.getChildren().add(buttonsContainer);
+        root.getChildren().add(getButtons());
 
         // Set the start and end nodes based on the given conditions
         int startY = GRID_HEIGHT / 2;
@@ -343,5 +264,100 @@ public class Visualization extends Application {
                 }
             }
         }
+    }
+
+
+
+
+
+
+    ////////////////////
+
+
+    private void handleMouseClick(MouseEvent event){
+        int x = (int) (event.getX() / CELL_SIZE);
+        int y = (int) (event.getY() / CELL_SIZE);
+
+        // Ensure the click is within the grid bounds
+        if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+            Node clickedNode = grid.getNode(x, y);
+            if (clickedNode == startNode) {
+                currentMode = Mode.PLACE_START;
+            } else if (clickedNode == endNode) {
+                currentMode = Mode.PLACE_END;
+            } else if (clickedNode.isObstacle()) {
+                currentMode = Mode.REMOVE_OBSTACLE;
+                removeObstacle(x, y);
+            } else {
+                currentMode = Mode.SET_OBSTACLE;
+                setObstacle(x, y);
+            }
+        }
+    }
+
+
+    private void handleMouseDrag(MouseEvent event){
+        int x = (int) (event.getX() / CELL_SIZE);
+        int y = (int) (event.getY() / CELL_SIZE);
+
+        if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+            if (currentMode == Mode.PLACE_START) {
+                setStartNode(x, y);
+            } else if (currentMode == Mode.PLACE_END) {
+                setEndNode(x, y);
+            } else if (currentMode == Mode.REMOVE_OBSTACLE) {
+                removeObstacle(x, y);
+            } else {
+                setObstacle(x, y);
+            }
+        }
+    }
+
+    private VBox getButtons(){
+        Button startAlgorithmButton = new Button("Start Algorithm");
+        startAlgorithmButton.setLayoutX(GRID_WIDTH * CELL_SIZE / 2 + 20);
+        startAlgorithmButton.setLayoutY(GRID_HEIGHT * CELL_SIZE + 10);
+        startAlgorithmButton.setOnAction(e -> {
+            findAndDrawPath();
+        });
+
+        Label sliderLabel = new Label("Number of obstacles:");
+        Slider obstaclesSlider = new Slider(5, GRID_WIDTH * GRID_HEIGHT * 0.05, GRID_WIDTH * GRID_HEIGHT * 0.005);
+        obstaclesSlider.setShowTickLabels(true);
+        obstaclesSlider.setShowTickMarks(true);
+        obstaclesSlider.setMajorTickUnit(50);
+        obstaclesSlider.setBlockIncrement(1);
+
+        Button addRandomObstaclesButton = new Button("Add Random Obstacles");
+        addRandomObstaclesButton.setOnAction(e -> addRandomObstacles((int) obstaclesSlider.getValue()));
+
+        Button clearButton = new Button("Clear");
+        clearButton.setOnAction(e -> clearGrid());
+
+        HBox topButtonsContainer = new HBox(10);
+        topButtonsContainer.setAlignment(Pos.CENTER);
+        topButtonsContainer.getChildren().addAll(addRandomObstaclesButton);
+
+        HBox bottomButtonsContainer = new HBox(10);
+        bottomButtonsContainer.setAlignment(Pos.CENTER);
+        bottomButtonsContainer.getChildren().addAll(clearButton, startAlgorithmButton);
+
+        VBox sliderContainer = new VBox(5);
+        sliderContainer.setAlignment(Pos.CENTER);
+        sliderContainer.getChildren().addAll(sliderLabel, obstaclesSlider);
+
+        HBox bottomRowContainer = new HBox(10);
+        bottomRowContainer.setAlignment(Pos.CENTER);
+        bottomRowContainer.getChildren().addAll(bottomButtonsContainer, sliderContainer);
+
+        VBox buttonsContainer = new VBox(10);
+        buttonsContainer.setPadding(new Insets(10, 0, 0, 0));
+        buttonsContainer.setAlignment(Pos.CENTER);
+        buttonsContainer.setLayoutX(0);
+        buttonsContainer.setLayoutY(GRID_HEIGHT * CELL_SIZE);
+        buttonsContainer.setPrefWidth(GRID_WIDTH * CELL_SIZE);
+        buttonsContainer.getChildren().addAll(topButtonsContainer, bottomRowContainer);
+
+        return buttonsContainer;
     }
 }
