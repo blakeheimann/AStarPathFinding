@@ -1,5 +1,5 @@
-import javafx.animation.AnimationTimer;
 import javafx.application.Application;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -23,9 +23,10 @@ public class Visualization extends Application {
     private Pane root;
     private Node startNode;
     private Node endNode;
-    private AnimationTimer animationTimer;
+    private Task<Void> pathfindingTask;
     private PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingDouble(Node::getFCost));
     private Set<Node> closedSet = new HashSet<>();
+    private Rectangle[][] cellRectangles = new Rectangle[GRID_WIDTH][GRID_HEIGHT];
 
     private enum Mode {
         PLACE_START, PLACE_END, REMOVE_OBSTACLE, SET_OBSTACLE, RUNNING_ALGORITHM
@@ -84,17 +85,6 @@ public class Visualization extends Application {
                 }
             }
         });
-
-        animationTimer = new AnimationTimer() {
-            @Override
-            public void handle(long now) {
-                if (currentMode == Mode.RUNNING_ALGORITHM) {
-                    findAndDrawPathStep();
-                }
-            }
-        };
-        animationTimer.start();
-
 
         // Add UI buttons
 
@@ -162,16 +152,24 @@ public class Visualization extends Application {
         for (int x = 0; x < GRID_WIDTH; x++) {
             for (int y = 0; y < GRID_HEIGHT; y++) {
                 Node node = grid.getNode(x, y);
-                drawCell(x, y, node.isObstacle() ? Color.BLACK : Color.WHITE);
+                cellRectangles[x][y] = createCell(x, y, node.isObstacle() ? Color.BLACK : Color.WHITE);
             }
         }
     }
 
-    private void drawCell(int x, int y, Color color) {
+    private Rectangle createCell(int x, int y, Color color) {
         Rectangle rect = new Rectangle(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
         rect.setFill(color);
         rect.setStroke(Color.GRAY);
         root.getChildren().add(rect);
+        return rect;
+    }
+
+    private void drawCell(int x, int y, Color color) {
+        Rectangle rect = cellRectangles[x][y];
+        if (rect != null) {
+            rect.setFill(color);
+        }
     }
 
     private void clearPath() {
@@ -203,7 +201,26 @@ public class Visualization extends Application {
         openSet.add(startNode);
         if (startNode != null && endNode != null) {
             currentMode = Mode.RUNNING_ALGORITHM;
+            pathfindingTask = createPathfindingTask();
+            new Thread(pathfindingTask).start();
         }
+    }
+
+    private Task<Void> createPathfindingTask() {
+        return new Task<Void>() {
+            @Override
+            protected Void call() {
+                while (currentMode == Mode.RUNNING_ALGORITHM) {
+                    findAndDrawPathStep();
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                        break;
+                    }
+                }
+                return null;
+            }
+        };
     }
 
     private void findAndDrawPathStep() {
@@ -288,22 +305,26 @@ public class Visualization extends Application {
     }
 
     private void setStartNode(int x, int y) {
+        if(grid.getNode(x,y).isObstacle()){
+            return;
+        }
         if (startNode != null) {
             // Clear the previous start node
             drawCell(startNode.getX(), startNode.getY(), Color.WHITE);
         }
         startNode = grid.getNode(x, y);
-//        grid.setObstacle(startNode.getX(), startNode.getY(), false);
         drawCell(x, y, Color.GREEN);
     }
 
     private void setEndNode(int x, int y) {
+        if(grid.getNode(x,y).isObstacle()){
+            return;
+        }
         if (endNode != null) {
             // Clear the previous end node
             drawCell(endNode.getX(), endNode.getY(), Color.WHITE);
         }
         endNode = grid.getNode(x, y);
-//        grid.setObstacle(endNode.getX(), endNode.getY(), false);
         drawCell(x, y, Color.RED);
     }
 
@@ -311,14 +332,14 @@ public class Visualization extends Application {
         if (openSet != null) {
             for (Node node : openSet) {
                 if (node != startNode && node != endNode) {
-                    drawCell(node.getX(), node.getY(), Color.LIGHTBLUE);
+                    drawCell(node.getX(), node.getY(), Color.LIGHTGREEN);
                 }
             }
         }
         if (closedSet != null) {
             for (Node node : closedSet) {
                 if (node != startNode && node != endNode) {
-                    drawCell(node.getX(), node.getY(), Color.LIGHTGREEN);
+                    drawCell(node.getX(), node.getY(), Color.LIGHTBLUE);
                 }
             }
         }
