@@ -1,3 +1,4 @@
+import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -19,15 +20,16 @@ public class Visualization extends Application {
     private static final int GRID_WIDTH = 30;
     private static final int GRID_HEIGHT = 30;
     private Grid grid;
-    private AStarPathFinder pathFinder;
     private Pane root;
     private Node startNode;
     private Node endNode;
+    private AnimationTimer animationTimer;
+    private PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingDouble(Node::getFCost));
+    private Set<Node> closedSet = new HashSet<>();
 
     private enum Mode {
-        PLACE_START, PLACE_END, REMOVE_OBSTACLE, SET_OBSTACLE
+        PLACE_START, PLACE_END, REMOVE_OBSTACLE, SET_OBSTACLE, RUNNING_ALGORITHM
     }
-
 
     private Mode currentMode = Mode.PLACE_START;
 
@@ -38,7 +40,6 @@ public class Visualization extends Application {
     @Override
     public void start(Stage primaryStage) {
         grid = new Grid(GRID_WIDTH, GRID_HEIGHT);
-
         root = new Pane();
         Scene scene = new Scene(root, GRID_WIDTH * CELL_SIZE, GRID_HEIGHT * CELL_SIZE + 120);
 
@@ -84,6 +85,16 @@ public class Visualization extends Application {
             }
         });
 
+        animationTimer = new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                if (currentMode == Mode.RUNNING_ALGORITHM) {
+                    findAndDrawPathStep();
+                }
+            }
+        };
+        animationTimer.start();
+
 
         // Add UI buttons
 
@@ -91,11 +102,7 @@ public class Visualization extends Application {
         startAlgorithmButton.setLayoutX(GRID_WIDTH * CELL_SIZE / 2 + 20);
         startAlgorithmButton.setLayoutY(GRID_HEIGHT * CELL_SIZE + 10);
         startAlgorithmButton.setOnAction(e -> {
-            try {
-                findAndDrawPath();
-            } catch (InterruptedException ex) {
-                throw new RuntimeException(ex);
-            }
+            findAndDrawPath();
         });
 
         Label sliderLabel = new Label("Number of obstacles:");
@@ -149,68 +156,7 @@ public class Visualization extends Application {
         primaryStage.show();
     }
 
-    public List<Node> findPath(Node startNode, Node endNode) throws InterruptedException {
 
-        if (startNode == null || endNode == null || startNode.isObstacle() || endNode.isObstacle()) {
-            return null;
-        }
-
-        PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingDouble(Node::getFCost));
-        Set<Node> closedSet = new HashSet<>();
-
-        openSet.add(startNode);
-
-        while (!openSet.isEmpty()) {
-            Node currentNode = openSet.poll();
-
-            if (currentNode.equals(endNode)) {
-                return AStarPathFinder.reconstructPath(endNode);
-            }
-
-            closedSet.add(currentNode);
-
-            for (Node neighbor : grid.getNeighbors(currentNode)) {
-                if (closedSet.contains(neighbor)) {
-                    continue;
-                }
-
-                double tentativeGCost = currentNode.getGCost() + AStarPathFinder.distance(currentNode, neighbor);
-
-                if (tentativeGCost < neighbor.getGCost() || !openSet.contains(neighbor)) {
-                    neighbor.setParent(currentNode);
-                    neighbor.setGCost(tentativeGCost);
-                    neighbor.setHCost(AStarPathFinder.distance(neighbor, endNode));
-
-                    if (!openSet.contains(neighbor)) {
-                        openSet.add(neighbor);
-                    }
-                }
-            }
-            // update Visualization
-            updateSets(openSet,closedSet);
-
-        }
-
-        return null;
-    }
-
-    private void setStartNode(int x, int y) {
-        if (startNode != null) {
-            // Clear the previous start node
-            drawCell(startNode.getX(), startNode.getY(), Color.WHITE);
-        }
-        startNode = grid.getNode(x, y);
-        drawCell(x, y, Color.GREEN);
-    }
-
-    private void setEndNode(int x, int y) {
-        if (endNode != null) {
-            // Clear the previous end node
-            drawCell(endNode.getX(), endNode.getY(), Color.WHITE);
-        }
-        endNode = grid.getNode(x, y);
-        drawCell(x, y, Color.RED);
-    }
 
     private void drawGrid() {
         for (int x = 0; x < GRID_WIDTH; x++) {
@@ -250,15 +196,55 @@ public class Visualization extends Application {
         }
     }
 
-    private void findAndDrawPath() throws InterruptedException {
+    private void findAndDrawPath() {
         clearPath();
+        openSet = new PriorityQueue<>(Comparator.comparingDouble(Node::getFCost));
+        closedSet = new HashSet<>();
+        openSet.add(startNode);
         if (startNode != null && endNode != null) {
-            List<Node> path = findPath(startNode, endNode);
+            currentMode = Mode.RUNNING_ALGORITHM;
+        }
+    }
+
+    private void findAndDrawPathStep() {
+        if (startNode == null || endNode == null || startNode.isObstacle() || endNode.isObstacle()) {
+            currentMode = Mode.PLACE_START;
+            return;
+        }
+
+        if (openSet.isEmpty()) {
+            currentMode = Mode.PLACE_START;
+            return;
+        }
+
+        Node currentNode = openSet.poll();
+        if (currentNode.equals(endNode)) {
+            List<Node> path = AStarPathFinder.reconstructPath(endNode);
             if (path != null) {
                 for (Node node : path) {
                     if (node != startNode && node != endNode) {
                         drawCell(node.getX(), node.getY(), Color.BLUE);
                     }
+                }
+            }
+            currentMode = Mode.PLACE_START;
+            return;
+        }
+        updateSets(openSet, closedSet);
+        closedSet.add(currentNode);
+        for (Node neighbor : grid.getNeighbors(currentNode)) {
+            if (closedSet.contains(neighbor)) {
+                continue;
+            }
+
+            double tentativeGCost = currentNode.getGCost() + AStarPathFinder.distance(currentNode, neighbor);
+            if (tentativeGCost < neighbor.getGCost() || !openSet.contains(neighbor)) {
+                neighbor.setParent(currentNode);
+                neighbor.setGCost(tentativeGCost);
+                neighbor.setHCost(AStarPathFinder.distance(neighbor, endNode));
+
+                if (!openSet.contains(neighbor)) {
+                    openSet.add(neighbor);
                 }
             }
         }
@@ -301,6 +287,26 @@ public class Visualization extends Application {
         }
     }
 
+    private void setStartNode(int x, int y) {
+        if (startNode != null) {
+            // Clear the previous start node
+            drawCell(startNode.getX(), startNode.getY(), Color.WHITE);
+        }
+        startNode = grid.getNode(x, y);
+//        grid.setObstacle(startNode.getX(), startNode.getY(), false);
+        drawCell(x, y, Color.GREEN);
+    }
+
+    private void setEndNode(int x, int y) {
+        if (endNode != null) {
+            // Clear the previous end node
+            drawCell(endNode.getX(), endNode.getY(), Color.WHITE);
+        }
+        endNode = grid.getNode(x, y);
+//        grid.setObstacle(endNode.getX(), endNode.getY(), false);
+        drawCell(x, y, Color.RED);
+    }
+
     public void updateSets(PriorityQueue<Node> openSet, Set<Node> closedSet) {
         if (openSet != null) {
             for (Node node : openSet) {
@@ -310,7 +316,7 @@ public class Visualization extends Application {
             }
         }
         if (closedSet != null) {
-            for (Node node : openSet) {
+            for (Node node : closedSet) {
                 if (node != startNode && node != endNode) {
                     drawCell(node.getX(), node.getY(), Color.LIGHTGREEN);
                 }
