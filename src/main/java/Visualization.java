@@ -17,7 +17,7 @@ import javafx.stage.Stage;
 import java.util.*;
 
 public class Visualization extends Application {
-    private static final int CELL_SIZE = 20;
+    public static final int CELL_SIZE = 20;
     private static final int GRID_WIDTH = 30;
     private static final int GRID_HEIGHT = 30;
     private Grid grid;
@@ -27,6 +27,7 @@ public class Visualization extends Application {
     private Task<Void> pathfindingTask;
     private PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingDouble(Node::getFCost));
     private Set<Node> closedSet = new HashSet<>();
+    private List<Node> path = new ArrayList<>();
     private Rectangle[][] cellRectangles = new Rectangle[GRID_WIDTH][GRID_HEIGHT];
 
     private enum Mode {
@@ -70,35 +71,21 @@ public class Visualization extends Application {
 
 
     private void drawGrid() {
-        for (int x = 0; x < GRID_WIDTH; x++) {
-            for (int y = 0; y < GRID_HEIGHT; y++) {
-                Node node = grid.getNode(x, y);
-                cellRectangles[x][y] = createCell(x, y, node.isObstacle() ? Color.BLACK : Color.WHITE);
+        for(Node[] nodesArray : grid.nodes){
+            for(Node node:nodesArray){
+                root.getChildren().add(node.getRect());
             }
         }
     }
 
-    private Rectangle createCell(int x, int y, Color color) {
-        Rectangle rect = new Rectangle(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-        rect.setFill(color);
-        rect.setStroke(Color.GRAY);
-        root.getChildren().add(rect);
-        return rect;
-    }
 
-    private void drawCell(Node node, Color color) {
-        Rectangle rect = cellRectangles[node.getX()][node.getY()];
-        if (rect != null) {
-            rect.setFill(color);
-        }
-    }
 // Definitely can be improved instead of searching whole graph just go through the open and closed set?
     private void clearPath() {
-        for (int x = 0; x < GRID_WIDTH; x++) {
-            for (int y = 0; y < GRID_HEIGHT; y++) {
-                Node node = grid.getNode(x, y);
-                if (!node.isObstacle() && node != startNode && node != endNode) {
-                    drawCell(node, Color.WHITE);
+
+        for(Node[] nodesArray : grid.nodes){
+            for(Node node:nodesArray){
+                if (node.isPath() || node.isClosedSet() || node.isOpenSet()) {
+                    node.setBlank();
                 }
             }
         }
@@ -106,7 +93,6 @@ public class Visualization extends Application {
 
     private void clearGrid() {
         grid.clear();
-        drawGrid();
         if (startNode != null) {
             setStartNode(startNode);
         }
@@ -161,14 +147,13 @@ public class Visualization extends Application {
             if (path != null) {
                 for (Node node : path) {
                     if (node != startNode && node != endNode) {
-                        drawCell(node, Color.BLUE);
+                        node.setPath();
                     }
                 }
             }
             currentMode = Mode.PLACE_START;
             return;
         }
-        updateSets(openSet, closedSet);
         closedSet.add(currentNode);
         for (Node neighbor : grid.getNeighbors(currentNode)) {
             if (closedSet.contains(neighbor)) {
@@ -186,6 +171,7 @@ public class Visualization extends Application {
                 }
             }
         }
+        updateSets(openSet, closedSet);
     }
 
     private void addRandomObstacles(int numObstacles) {
@@ -200,8 +186,7 @@ public class Visualization extends Application {
                 node = grid.getNode(x, y);
             } while (node.isObstacle() || node == startNode || node == endNode);
 
-            node.setObstacle(true);
-            drawCell(node, Color.BLACK);
+            node.setObstacle();
         }
     }
 
@@ -209,8 +194,7 @@ public class Visualization extends Application {
         if (node == startNode || node == endNode) return;
 
         if (!node.isObstacle()) {
-            node.setObstacle(true);
-            drawCell(node, Color.BLACK);
+            node.setObstacle();
         }
     }
 
@@ -218,8 +202,7 @@ public class Visualization extends Application {
         if (node == startNode || node == endNode) return;
 
         if (node.isObstacle()) {
-            node.setObstacle(false);
-            drawCell(node, Color.WHITE);
+            node.setBlank();
         }
     }
 
@@ -229,10 +212,10 @@ public class Visualization extends Application {
         }
         if (startNode != null) {
             // Clear the previous start node
-            drawCell(startNode, Color.WHITE);
+            startNode.setBlank();
         }
         startNode = node;
-        drawCell(node, Color.GREEN);
+        node.setStart();
     }
 
     private void setEndNode(Node node) {
@@ -241,24 +224,24 @@ public class Visualization extends Application {
         }
         if (endNode != null) {
             // Clear the previous end node
-            drawCell(endNode, Color.WHITE);
+            endNode.setBlank();
         }
         endNode = node;
-        drawCell(node, Color.RED);
+        node.setEnd();
     }
 
     public void updateSets(PriorityQueue<Node> openSet, Set<Node> closedSet) {
         if (openSet != null) {
             for (Node node : openSet) {
                 if (node != startNode && node != endNode) {
-                    drawCell(node, Color.LIGHTGREEN);
+                    node.setOpenSet();
                 }
             }
         }
         if (closedSet != null) {
             for (Node node : closedSet) {
                 if (node != startNode && node != endNode) {
-                    drawCell(node, Color.LIGHTBLUE);
+                    node.setClosedSet();
                 }
             }
         }

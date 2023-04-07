@@ -13,7 +13,7 @@ public class Grid {
 
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
-                nodes[x][y] = new Node(x, y);
+                nodes[x][y] = new Node(x, y, Node.State.BLANK);
             }
         }
     }
@@ -48,10 +48,7 @@ public class Grid {
     public void clear() {
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
-                nodes[x][y].setObstacle(false);
-                nodes[x][y].setParent(null);
-                nodes[x][y].setGCost(0);
-                nodes[x][y].setHCost(0);
+                nodes[x][y].setBlank();
             }
         }
     }
