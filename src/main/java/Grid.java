@@ -2,8 +2,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Grid {
-    private int width;
-    private int height;
+    private final int width;
+    private final int height;
     public Node[][] nodes;
 
     public Grid(int width, int height) {

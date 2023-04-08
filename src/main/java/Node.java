@@ -2,21 +2,15 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 
 public class Node {
-    private int x;
-    private int y;
+    private static final int CELL_SIZE = Visualization.CELL_SIZE;
+    private final int x;
+    private final int y;
+    private final Rectangle rect;
     private Node parent;
     private double gCost;
     private double hCost;
     private double fCost;
-    private Rectangle rect;
-
-    public enum State {
-        BLANK, OBSTACLE, START, END, CLOSED_SET, OPEN_SET, PATH
-    }
-
     private State state;
-    private static final int CELL_SIZE = Visualization.CELL_SIZE;
-
     public Node(int x, int y, State state) {
         this.x = x;
         this.y = y;
@@ -80,7 +74,6 @@ public class Node {
         this.parent = parent;
     }
 
-
     public double getGCost() {
         return gCost;
     }
@@ -88,10 +81,6 @@ public class Node {
     public void setGCost(double gCost) {
         this.gCost = gCost;
         updateFCost();
-    }
-
-    public double getHCost() {
-        return hCost;
     }
 
     public void setHCost(double hCost) {
@@ -114,10 +103,6 @@ public class Node {
     public void setObstacle() {
         this.state = State.OBSTACLE;
         updateRect();
-    }
-
-    public boolean isBlank() {
-        return this.state.equals(State.BLANK);
     }
 
     public void setBlank() {
@@ -173,14 +158,6 @@ public class Node {
         updateRect();
     }
 
-    public void setState(State state) {
-        this.state = state;
-    }
-
-    public State getState() {
-        return this.state;
-    }
-
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
@@ -191,5 +168,9 @@ public class Node {
         }
         Node node = (Node) obj;
         return x == node.x && y == node.y;
+    }
+
+    public enum State {
+        BLANK, OBSTACLE, START, END, CLOSED_SET, OPEN_SET, PATH
     }
 }

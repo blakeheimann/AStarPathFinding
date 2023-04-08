@@ -18,22 +18,14 @@ public class Visualization extends Application {
     public static final int CELL_SIZE = 20;
     private static final int GRID_WIDTH = 30;
     private static final int GRID_HEIGHT = 30;
-    private static final int THREAD_SLEEP_MILLIS = 2;
+    private static final int THREAD_SLEEP_MILLIS = 10;
     private Grid grid;
     private Pane root;
     private Node startNode;
     private Node endNode;
-    private Node.State oldStartState = Node.State.BLANK;
-    private Node.State oldEndState = Node.State.BLANK;
-    private Task<Void> pathfindingTask;
     private PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingDouble(Node::getFCost));
     private Set<Node> closedSet = new HashSet<>();
     private List<Node> path = new ArrayList<>();
-
-    private enum Mode {
-        PLACE_START, PLACE_END, REMOVE_OBSTACLE, SET_OBSTACLE, RUNNING_ALGORITHM
-    }
-
     private Mode currentMode = Mode.PLACE_START;
 
     public static void main(String[] args) {
@@ -50,8 +42,8 @@ public class Visualization extends Application {
         drawGrid();
 
         // Add mouse event listeners
-        scene.setOnMousePressed(event -> handleMouseClick(event));
-        scene.setOnMouseDragged(event -> handleMouseDrag(event));
+        scene.setOnMousePressed(this::handleMouseClick);
+        scene.setOnMouseDragged(this::handleMouseDrag);
 
         // Add UI buttons
         root.getChildren().add(getButtons());
@@ -68,7 +60,6 @@ public class Visualization extends Application {
         primaryStage.show();
     }
 
-
     private void drawGrid() {
         for (Node[] nodesArray : grid.nodes) {
             for (Node node : nodesArray) {
@@ -76,7 +67,6 @@ public class Visualization extends Application {
             }
         }
     }
-
 
     // sets all nodes in the sets to blank
     private void clearPath() {
@@ -111,7 +101,7 @@ public class Visualization extends Application {
         openSet.add(startNode);
         if (startNode != null && endNode != null) {
             currentMode = Mode.RUNNING_ALGORITHM;
-            pathfindingTask = createPathfindingTask();
+            Task<Void> pathfindingTask = createPathfindingTask();
             new Thread(pathfindingTask).start();
         }
     }
@@ -147,11 +137,9 @@ public class Visualization extends Application {
         Node currentNode = openSet.poll();
         if (currentNode.equals(endNode)) {
             path = AStarPathFinder.reconstructPath(endNode);
-            if (path != null) {
-                for (Node node : path) {
-                    if (node != startNode && node != endNode) {
-                        node.setPath();
-                    }
+            for (Node node : path) {
+                if (node != startNode && node != endNode) {
+                    node.setPath();
                 }
             }
             currentMode = Mode.PLACE_START;
@@ -266,9 +254,6 @@ public class Visualization extends Application {
         }
     }
 
-    ////////////////////
-
-
     private void handleMouseClick(MouseEvent event) {
         int x = (int) (event.getX() / CELL_SIZE);
         int y = (int) (event.getY() / CELL_SIZE);
@@ -290,6 +275,7 @@ public class Visualization extends Application {
         }
     }
 
+    ////////////////////
 
     private void handleMouseDrag(MouseEvent event) {
         int x = (int) (event.getX() / CELL_SIZE);
@@ -311,7 +297,7 @@ public class Visualization extends Application {
 
     private VBox getButtons() {
         Button startAlgorithmButton = new Button("Start Algorithm");
-        startAlgorithmButton.setLayoutX(GRID_WIDTH * CELL_SIZE / 2 + 20);
+        startAlgorithmButton.setLayoutX((double) (GRID_WIDTH * CELL_SIZE) / 2 + 20);
         startAlgorithmButton.setLayoutY(GRID_HEIGHT * CELL_SIZE + 10);
         startAlgorithmButton.setOnAction(e -> {
             findAndDrawPath();
@@ -355,5 +341,9 @@ public class Visualization extends Application {
         buttonsContainer.getChildren().addAll(topButtonsContainer, bottomRowContainer);
 
         return buttonsContainer;
+    }
+
+    private enum Mode {
+        PLACE_START, PLACE_END, REMOVE_OBSTACLE, SET_OBSTACLE, RUNNING_ALGORITHM
     }
 }
