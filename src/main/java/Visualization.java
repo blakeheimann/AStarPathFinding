@@ -15,9 +15,9 @@ import javafx.stage.Stage;
 import java.util.*;
 
 public class Visualization extends Application {
-    public static final int CELL_SIZE = 20;
-    private static final int GRID_WIDTH = 30;
-    private static final int GRID_HEIGHT = 30;
+    public static final int CELL_SIZE = 30;
+    private static final int GRID_WIDTH = 50;
+    private static final int GRID_HEIGHT = 25;
     private static final int THREAD_SLEEP_MILLIS = 10;
     private Grid grid;
     private Pane root;

@@ -24,19 +24,19 @@ public class Node {
         Color color;
         switch (this.state) {
             case START:
-                color = Color.GREEN;
+                color = Color.LIMEGREEN;
                 break;
             case END:
                 color = Color.RED;
                 break;
             case CLOSED_SET:
-                color = Color.LIGHTGREEN;
-                break;
-            case OPEN_SET:
                 color = Color.LIGHTBLUE;
                 break;
+            case OPEN_SET:
+                color = Color.LIGHTGREEN;
+                break;
             case PATH:
-                color = Color.BLUE;
+                color = Color.GOLD;
                 break;
             case OBSTACLE:
                 color = Color.BLACK;
