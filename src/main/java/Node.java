@@ -9,6 +9,7 @@ public class Node {
     private double hCost;
     private double fCost;
     private Rectangle rect;
+
     public enum State {
         BLANK, OBSTACLE, START, END, CLOSED_SET, OPEN_SET, PATH
     }
@@ -56,7 +57,7 @@ public class Node {
         return x;
     }
 
-    public Rectangle getRect(){
+    public Rectangle getRect() {
         return rect;
     }
 
@@ -114,45 +115,70 @@ public class Node {
         this.state = State.OBSTACLE;
         updateRect();
     }
-    public boolean isBlank(){
+
+    public boolean isBlank() {
         return this.state.equals(State.BLANK);
     }
-    public void setBlank(){
+
+    public void setBlank() {
         this.state = State.BLANK;
         this.parent = null;
         updateRect();
     }
 
-    public void setStart(){
+    public void setStart() {
         this.state = State.START;
-        updateRect();
-    }
-    public void setEnd(){
-        this.state = State.END;
+        this.parent = null;
         updateRect();
     }
 
-    public boolean isClosedSet(){
+    public boolean isStart() {
+        return this.state.equals(State.START);
+    }
+
+    public void setEnd() {
+        this.state = State.END;
+        this.parent = null;
+        updateRect();
+    }
+
+    public boolean isEnd() {
+        return this.state.equals(State.END);
+    }
+
+    public boolean isClosedSet() {
         return this.state.equals(State.CLOSED_SET);
     }
-    public void setClosedSet(){
+
+    public void setClosedSet() {
         this.state = State.CLOSED_SET;
         updateRect();
     }
-    public boolean isOpenSet(){
+
+    public boolean isOpenSet() {
         return this.state.equals(State.OPEN_SET);
     }
-    public void setOpenSet(){
+
+    public void setOpenSet() {
         this.state = State.OPEN_SET;
         updateRect();
     }
 
-    public boolean isPath(){
+    public boolean isPath() {
         return this.state.equals(State.PATH);
     }
-    public void setPath(){
+
+    public void setPath() {
         this.state = State.PATH;
         updateRect();
+    }
+
+    public void setState(State state) {
+        this.state = state;
+    }
+
+    public State getState() {
+        return this.state;
     }
 
     @Override

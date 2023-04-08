@@ -10,8 +10,6 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 
 import java.util.*;
@@ -20,15 +18,17 @@ public class Visualization extends Application {
     public static final int CELL_SIZE = 20;
     private static final int GRID_WIDTH = 30;
     private static final int GRID_HEIGHT = 30;
+    private static final int THREAD_SLEEP_MILLIS = 2;
     private Grid grid;
     private Pane root;
     private Node startNode;
     private Node endNode;
+    private Node.State oldStartState = Node.State.BLANK;
+    private Node.State oldEndState = Node.State.BLANK;
     private Task<Void> pathfindingTask;
     private PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingDouble(Node::getFCost));
     private Set<Node> closedSet = new HashSet<>();
     private List<Node> path = new ArrayList<>();
-    private Rectangle[][] cellRectangles = new Rectangle[GRID_WIDTH][GRID_HEIGHT];
 
     private enum Mode {
         PLACE_START, PLACE_END, REMOVE_OBSTACLE, SET_OBSTACLE, RUNNING_ALGORITHM
@@ -60,7 +60,7 @@ public class Visualization extends Application {
         int startY = GRID_HEIGHT / 2;
         int startX = GRID_WIDTH / 3;
         int endX = (2 * GRID_WIDTH) / 3;
-        setStartNode(grid.getNode(startX,startY));
+        setStartNode(grid.getNode(startX, startY));
         setEndNode(grid.getNode(endX, startY));
 
         primaryStage.setTitle("A* Pathfinding Visualization");
@@ -69,21 +69,19 @@ public class Visualization extends Application {
     }
 
 
-
     private void drawGrid() {
-        for(Node[] nodesArray : grid.nodes){
-            for(Node node:nodesArray){
+        for (Node[] nodesArray : grid.nodes) {
+            for (Node node : nodesArray) {
                 root.getChildren().add(node.getRect());
             }
         }
     }
 
 
-// Definitely can be improved instead of searching whole graph just go through the open and closed set?
+    // sets all nodes in the sets to blank
     private void clearPath() {
-
-        for(Node[] nodesArray : grid.nodes){
-            for(Node node:nodesArray){
+        for (Node[] nodesArray : grid.nodes) {
+            for (Node node : nodesArray) {
                 if (node.isPath() || node.isClosedSet() || node.isOpenSet()) {
                     node.setBlank();
                 }
@@ -91,7 +89,11 @@ public class Visualization extends Application {
         }
     }
 
+    // sets all nodes to blank except for start and end node
     private void clearGrid() {
+        openSet = new PriorityQueue<>(Comparator.comparingDouble(Node::getFCost));
+        closedSet = new HashSet<>();
+        path = new ArrayList<>();
         grid.clear();
         if (startNode != null) {
             setStartNode(startNode);
@@ -105,6 +107,7 @@ public class Visualization extends Application {
         clearPath();
         openSet = new PriorityQueue<>(Comparator.comparingDouble(Node::getFCost));
         closedSet = new HashSet<>();
+        path = new ArrayList<>();
         openSet.add(startNode);
         if (startNode != null && endNode != null) {
             currentMode = Mode.RUNNING_ALGORITHM;
@@ -120,7 +123,7 @@ public class Visualization extends Application {
                 while (currentMode == Mode.RUNNING_ALGORITHM) {
                     findAndDrawPathStep();
                     try {
-                        Thread.sleep(10);
+                        Thread.sleep(THREAD_SLEEP_MILLIS);
                     } catch (InterruptedException e) {
                         break;
                     }
@@ -143,7 +146,7 @@ public class Visualization extends Application {
 
         Node currentNode = openSet.poll();
         if (currentNode.equals(endNode)) {
-            List<Node> path = AStarPathFinder.reconstructPath(endNode);
+            path = AStarPathFinder.reconstructPath(endNode);
             if (path != null) {
                 for (Node node : path) {
                     if (node != startNode && node != endNode) {
@@ -159,7 +162,6 @@ public class Visualization extends Application {
             if (closedSet.contains(neighbor)) {
                 continue;
             }
-
             double tentativeGCost = currentNode.getGCost() + AStarPathFinder.distance(currentNode, neighbor);
             if (tentativeGCost < neighbor.getGCost() || !openSet.contains(neighbor)) {
                 neighbor.setParent(currentNode);
@@ -174,6 +176,7 @@ public class Visualization extends Application {
         updateSets(openSet, closedSet);
     }
 
+    //adds random obstacles
     private void addRandomObstacles(int numObstacles) {
         Random random = new Random();
 
@@ -207,24 +210,40 @@ public class Visualization extends Application {
     }
 
     private void setStartNode(Node node) {
-        if(node.isObstacle()){
+        if (node.isObstacle() || node.isEnd()) {
             return;
         }
         if (startNode != null) {
             // Clear the previous start node
-            startNode.setBlank();
+            if (path.contains(startNode)) {
+                startNode.setPath();
+            } else if (openSet.contains(startNode)) {
+                startNode.setOpenSet();
+            } else if (closedSet.contains(startNode)) {
+                startNode.setClosedSet();
+            } else {
+                startNode.setBlank();
+            }
         }
         startNode = node;
         node.setStart();
     }
 
     private void setEndNode(Node node) {
-        if(node.isObstacle()){
+        if (node.isObstacle() || node.isStart()) {
             return;
         }
         if (endNode != null) {
             // Clear the previous end node
-            endNode.setBlank();
+            if (path.contains(endNode)) {
+                endNode.setPath();
+            } else if (openSet.contains(endNode)) {
+                endNode.setOpenSet();
+            } else if (closedSet.contains(endNode)) {
+                endNode.setClosedSet();
+            } else {
+                endNode.setBlank();
+            }
         }
         endNode = node;
         node.setEnd();
@@ -247,15 +266,10 @@ public class Visualization extends Application {
         }
     }
 
-
-
-
-
-
     ////////////////////
 
 
-    private void handleMouseClick(MouseEvent event){
+    private void handleMouseClick(MouseEvent event) {
         int x = (int) (event.getX() / CELL_SIZE);
         int y = (int) (event.getY() / CELL_SIZE);
 
@@ -277,7 +291,7 @@ public class Visualization extends Application {
     }
 
 
-    private void handleMouseDrag(MouseEvent event){
+    private void handleMouseDrag(MouseEvent event) {
         int x = (int) (event.getX() / CELL_SIZE);
         int y = (int) (event.getY() / CELL_SIZE);
 
@@ -295,7 +309,7 @@ public class Visualization extends Application {
         }
     }
 
-    private VBox getButtons(){
+    private VBox getButtons() {
         Button startAlgorithmButton = new Button("Start Algorithm");
         startAlgorithmButton.setLayoutX(GRID_WIDTH * CELL_SIZE / 2 + 20);
         startAlgorithmButton.setLayoutY(GRID_HEIGHT * CELL_SIZE + 10);

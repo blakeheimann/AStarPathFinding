@@ -11,6 +11,8 @@ public class AStarPathFinder {
         }
 
         Collections.reverse(path);
+        path.remove(0);
+        path.remove(path.size() - 1);
         return path;
     }
 
