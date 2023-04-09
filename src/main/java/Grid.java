@@ -1,23 +1,39 @@
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Grid represents a two-dimensional grid of nodes used in pathfinding.
+ */
 public class Grid {
     private final int width;
     private final int height;
-    public Node[][] nodes;
+    private final Node[][] nodes;
 
-    public Grid(int width, int height) {
+    /**
+     * Constructs a new Grid with the specified width and height.
+     *
+     * @param width The width of the grid.
+     * @param height The height of the grid.
+     */
+    public Grid(int width, int height, int cellSize) {
         this.width = width;
         this.height = height;
         this.nodes = new Node[width][height];
 
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
-                nodes[x][y] = new Node(x, y, Node.State.BLANK);
+                nodes[x][y] = new Node(x, y, Node.State.BLANK, cellSize);
             }
         }
     }
 
+    /**
+     * Retrieves the node at the specified coordinates.
+     *
+     * @param x The x coordinate.
+     * @param y The y coordinate.
+     * @return The node at the specified coordinates, or null if the coordinates are out of bounds.
+     */
     public Node getNode(int x, int y) {
         if (x >= 0 && x < width && y >= 0 && y < height) {
             return nodes[x][y];
@@ -25,6 +41,12 @@ public class Grid {
         return null;
     }
 
+    /**
+     * Retrieves the neighbors of the given node.
+     *
+     * @param node The node for which to find neighbors.
+     * @return A list of neighboring nodes.
+     */
     public List<Node> getNeighbors(Node node) {
         List<Node> neighbors = new ArrayList<>();
 
@@ -45,6 +67,9 @@ public class Grid {
         return neighbors;
     }
 
+    /**
+     * Resets the state of all nodes in the grid to blank.
+     */
     public void clear() {
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
@@ -52,4 +77,14 @@ public class Grid {
             }
         }
     }
+
+    /**
+     * Retrieves the Node[][] array representing the grid.
+     *
+     * @return The Node[][] array.
+     */
+    public Node[][] getNodes() {
+        return nodes;
+    }
 }
+

@@ -14,11 +14,32 @@ import javafx.stage.Stage;
 
 import java.util.*;
 
+/**
+ * Visualization is a JavaFX application that visualizes the A* pathfinding algorithm.
+ * The application displays a grid where users can set the start and end nodes, add or remove
+ * obstacles, and watch the algorithm find the shortest path between the start and end nodes.
+ * The visualization updates in real-time to show the progress of the algorithm.
+ * <p>
+ * The class provides an interactive interface with buttons to start the algorithm, clear the grid,
+ * and add random obstacles. Users can also click and drag nodes on the grid to change their
+ * positions or status.
+ * <p>
+ * Dependencies: JavaFX, Grid, Node, and AStarPathFinder classes.
+ * <p>
+ * Usage:
+ * - Compile the code.
+ * - Run the Visualization class.
+ * - Interact with the application through the GUI.
+ */
 public class Visualization extends Application {
     public static final int CELL_SIZE = 30;
     private static final int GRID_WIDTH = 50;
     private static final int GRID_HEIGHT = 25;
     private static final int THREAD_SLEEP_MILLIS = 10;
+    private static final double OBSTACLES_SLIDER_MIN = 5;
+    private static final double OBSTACLES_SLIDER_MAX = GRID_WIDTH * GRID_HEIGHT * 0.05;
+    private static final double OBSTACLES_SLIDER_INIT = GRID_WIDTH * GRID_HEIGHT * 0.005;
+
     private Grid grid;
     private Pane root;
     private Node startNode;
@@ -26,15 +47,30 @@ public class Visualization extends Application {
     private PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingDouble(Node::getFCost));
     private Set<Node> closedSet = new HashSet<>();
     private List<Node> path = new ArrayList<>();
-    private Mode currentMode = Mode.PLACE_START;
+    private InteractionMode currentInteractionMode = InteractionMode.PLACE_START;
 
+    private enum InteractionMode {
+        PLACE_START, PLACE_END, REMOVE_OBSTACLE, SET_OBSTACLE, RUNNING_ALGORITHM
+    }
+
+    /**
+     * The main method that launches the JavaFX application.
+     *
+     * @param args Command-line arguments (not used).
+     */
     public static void main(String[] args) {
         launch(args);
     }
 
+    /**
+     * Initializes the grid, scene, event listeners, and UI buttons.
+     * Called when the JavaFX application is started.
+     *
+     * @param primaryStage The primary stage for this application, onto which the application scene can be set.
+     */
     @Override
     public void start(Stage primaryStage) {
-        grid = new Grid(GRID_WIDTH, GRID_HEIGHT);
+        grid = new Grid(GRID_WIDTH, GRID_HEIGHT, CELL_SIZE);
         root = new Pane();
         Scene scene = new Scene(root, GRID_WIDTH * CELL_SIZE, GRID_HEIGHT * CELL_SIZE + 120);
 
@@ -60,17 +96,20 @@ public class Visualization extends Application {
         primaryStage.show();
     }
 
+    // Draw the grid by adding all nodes to the root Pane
     private void drawGrid() {
-        for (Node[] nodesArray : grid.nodes) {
+        for (Node[] nodesArray : grid.getNodes()) {
             for (Node node : nodesArray) {
                 root.getChildren().add(node.getRect());
             }
         }
     }
 
-    // sets all nodes in the sets to blank
+    /**
+     * Clears the path, open set, and closed set from the grid.
+     */
     private void clearPath() {
-        for (Node[] nodesArray : grid.nodes) {
+        for (Node[] nodesArray : grid.getNodes()) {
             for (Node node : nodesArray) {
                 if (node.isPath() || node.isClosedSet() || node.isOpenSet()) {
                     node.setBlank();
@@ -79,7 +118,9 @@ public class Visualization extends Application {
         }
     }
 
-    // sets all nodes to blank except for start and end node
+    /**
+     * Clears the entire grid, resetting the open set, closed set, and path.
+     */
     private void clearGrid() {
         openSet = new PriorityQueue<>(Comparator.comparingDouble(Node::getFCost));
         closedSet = new HashSet<>();
@@ -93,6 +134,9 @@ public class Visualization extends Application {
         }
     }
 
+    /**
+     * Finds and draws the shortest path between the start and end nodes using the A* algorithm.
+     */
     private void findAndDrawPath() {
         clearPath();
         openSet = new PriorityQueue<>(Comparator.comparingDouble(Node::getFCost));
@@ -100,17 +144,22 @@ public class Visualization extends Application {
         path = new ArrayList<>();
         openSet.add(startNode);
         if (startNode != null && endNode != null) {
-            currentMode = Mode.RUNNING_ALGORITHM;
+            currentInteractionMode = InteractionMode.RUNNING_ALGORITHM;
             Task<Void> pathfindingTask = createPathfindingTask();
             new Thread(pathfindingTask).start();
         }
     }
 
+    /**
+     * Creates and returns a new Task for running the A* algorithm in the background.
+     *
+     * @return A Task<Void> that represents the A* pathfinding algorithm running in the background.
+     */
     private Task<Void> createPathfindingTask() {
         return new Task<Void>() {
             @Override
             protected Void call() {
-                while (currentMode == Mode.RUNNING_ALGORITHM) {
+                while (currentInteractionMode == InteractionMode.RUNNING_ALGORITHM) {
                     findAndDrawPathStep();
                     try {
                         Thread.sleep(THREAD_SLEEP_MILLIS);
@@ -123,14 +172,17 @@ public class Visualization extends Application {
         };
     }
 
+    /**
+     * Performs one step of the A* algorithm and updates the grid accordingly.
+     */
     private void findAndDrawPathStep() {
         if (startNode == null || endNode == null || startNode.isObstacle() || endNode.isObstacle()) {
-            currentMode = Mode.PLACE_START;
+            currentInteractionMode = InteractionMode.PLACE_START;
             return;
         }
 
         if (openSet.isEmpty()) {
-            currentMode = Mode.PLACE_START;
+            currentInteractionMode = InteractionMode.PLACE_START;
             return;
         }
 
@@ -142,11 +194,12 @@ public class Visualization extends Application {
                     node.setPath();
                 }
             }
-            currentMode = Mode.PLACE_START;
+            currentInteractionMode = InteractionMode.PLACE_START;
             return;
         }
         closedSet.add(currentNode);
-        for (Node neighbor : grid.getNeighbors(currentNode)) {
+        List<Node> neighbors = grid.getNeighbors(currentNode);
+        for (Node neighbor : neighbors) {
             if (closedSet.contains(neighbor)) {
                 continue;
             }
@@ -164,7 +217,11 @@ public class Visualization extends Application {
         updateSets(openSet, closedSet);
     }
 
-    //adds random obstacles
+    /**
+     * Adds the specified number of random obstacles to the grid.
+     *
+     * @param numObstacles The number of obstacles to add to the grid.
+     */
     private void addRandomObstacles(int numObstacles) {
         Random random = new Random();
 
@@ -181,6 +238,11 @@ public class Visualization extends Application {
         }
     }
 
+    /**
+     * Sets the given node as an obstacle if it's not a start or end node.
+     *
+     * @param node The node to set as an obstacle.
+     */
     private void setObstacle(Node node) {
         if (node == startNode || node == endNode) return;
 
@@ -189,6 +251,11 @@ public class Visualization extends Application {
         }
     }
 
+    /**
+     * Removes the obstacle from the given node if it's not a start or end node.
+     *
+     * @param node The node to remove the obstacle from.
+     */
     private void removeObstacle(Node node) {
         if (node == startNode || node == endNode) return;
 
@@ -197,6 +264,11 @@ public class Visualization extends Application {
         }
     }
 
+    /**
+     * Sets the given node as the start node and updates the grid accordingly.
+     *
+     * @param node The node to set as the start node.
+     */
     private void setStartNode(Node node) {
         if (node.isObstacle() || node.isEnd()) {
             return;
@@ -217,6 +289,11 @@ public class Visualization extends Application {
         node.setStart();
     }
 
+    /**
+     * Sets the given node as the end node and updates the grid accordingly.
+     *
+     * @param node The node to set as the end node.
+     */
     private void setEndNode(Node node) {
         if (node.isObstacle() || node.isStart()) {
             return;
@@ -237,6 +314,12 @@ public class Visualization extends Application {
         node.setEnd();
     }
 
+    /**
+     * Updates the open set and closed set on the grid.
+     *
+     * @param openSet The PriorityQueue of nodes in the open set.
+     * @param closedSet The Set of nodes in the closed set.
+     */
     public void updateSets(PriorityQueue<Node> openSet, Set<Node> closedSet) {
         if (openSet != null) {
             for (Node node : openSet) {
@@ -254,6 +337,11 @@ public class Visualization extends Application {
         }
     }
 
+    /**
+     * Handles mouse click events for selecting nodes or obstacles.
+     *
+     * @param event The MouseEvent that represents the mouse click event.
+     */
     private void handleMouseClick(MouseEvent event) {
         int x = (int) (event.getX() / CELL_SIZE);
         int y = (int) (event.getY() / CELL_SIZE);
@@ -262,39 +350,53 @@ public class Visualization extends Application {
         if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
             Node clickedNode = grid.getNode(x, y);
             if (clickedNode == startNode) {
-                currentMode = Mode.PLACE_START;
+                currentInteractionMode = InteractionMode.PLACE_START;
             } else if (clickedNode == endNode) {
-                currentMode = Mode.PLACE_END;
+                currentInteractionMode = InteractionMode.PLACE_END;
             } else if (clickedNode.isObstacle()) {
-                currentMode = Mode.REMOVE_OBSTACLE;
+                currentInteractionMode = InteractionMode.REMOVE_OBSTACLE;
                 removeObstacle(clickedNode);
             } else {
-                currentMode = Mode.SET_OBSTACLE;
+                currentInteractionMode = InteractionMode.SET_OBSTACLE;
                 setObstacle(clickedNode);
             }
         }
     }
 
-    ////////////////////
-
+    /**
+     * Handles mouse drag events for moving start and end nodes, or setting/removing obstacles.
+     *
+     * @param event The MouseEvent that represents the mouse drag event.
+     */
     private void handleMouseDrag(MouseEvent event) {
         int x = (int) (event.getX() / CELL_SIZE);
         int y = (int) (event.getY() / CELL_SIZE);
 
         if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
             Node draggedNode = grid.getNode(x, y);
-            if (currentMode == Mode.PLACE_START) {
-                setStartNode(draggedNode);
-            } else if (currentMode == Mode.PLACE_END) {
-                setEndNode(draggedNode);
-            } else if (currentMode == Mode.REMOVE_OBSTACLE) {
-                removeObstacle(draggedNode);
-            } else {
-                setObstacle(draggedNode);
+            switch (currentInteractionMode) {
+                case PLACE_START:
+                    setStartNode(draggedNode);
+                    break;
+                case PLACE_END:
+                    setEndNode(draggedNode);
+                    break;
+                case REMOVE_OBSTACLE:
+                    removeObstacle(draggedNode);
+                    break;
+                default: // SET_OBSTACLE
+                    setObstacle(draggedNode);
+                    break;
             }
         }
     }
 
+
+    /**
+     * Creates and returns a VBox containing the UI buttons for the application.
+     *
+     * @return A VBox containing the UI buttons.
+     */
     private VBox getButtons() {
         Button startAlgorithmButton = new Button("Start Algorithm");
         startAlgorithmButton.setLayoutX((double) (GRID_WIDTH * CELL_SIZE) / 2 + 20);
@@ -304,7 +406,7 @@ public class Visualization extends Application {
         });
 
         Label sliderLabel = new Label("Number of obstacles:");
-        Slider obstaclesSlider = new Slider(5, GRID_WIDTH * GRID_HEIGHT * 0.05, GRID_WIDTH * GRID_HEIGHT * 0.005);
+        Slider obstaclesSlider = new Slider(OBSTACLES_SLIDER_MIN, OBSTACLES_SLIDER_MAX, OBSTACLES_SLIDER_INIT);
         obstaclesSlider.setShowTickLabels(true);
         obstaclesSlider.setShowTickMarks(true);
         obstaclesSlider.setMajorTickUnit(50);
@@ -341,9 +443,5 @@ public class Visualization extends Application {
         buttonsContainer.getChildren().addAll(topButtonsContainer, bottomRowContainer);
 
         return buttonsContainer;
-    }
-
-    private enum Mode {
-        PLACE_START, PLACE_END, REMOVE_OBSTACLE, SET_OBSTACLE, RUNNING_ALGORITHM
     }
 }
